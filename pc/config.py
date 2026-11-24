@@ -157,10 +157,12 @@ class ConfigTTS:
     palabras_clave_voz: tuple[str, ...] = (
         "es", "spanish", "español", "helena", "sabina", "laura", "pablo", "raul",
     )
-    # Algunas instalaciones de pyttsx3 solo hablan la primera vez que se llama
-    # a runAndWait(). Si te pasa, pon esto en True (crea un motor por frase,
-    # cuesta ~0.2 s más por respuesta).
-    reiniciar_motor_cada_frase: bool = _env("CASA_TTS_REINICIAR", False)
+    # Muchas instalaciones de pyttsx3 en Windows (SAPI5) solo hablan la primera
+    # vez que se llama a runAndWait() y luego se quedan "mudas" sin dar error:
+    # por eso se recrea el motor en cada frase por defecto (cuesta ~0.2 s más
+    # por respuesta). Pon CASA_TTS_REINICIAR=0 si en tu máquina SÍ puede
+    # reutilizarse el motor y prefieres ahorrarte ese costo.
+    reiniciar_motor_cada_frase: bool = _env("CASA_TTS_REINICIAR", True)
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +234,7 @@ class ConfigDialogo:
         "Atención: perdí la conexión con la casa y el modo seguridad está activo."
     )
     mensaje_alerta_intruso: str = "¡Alerta de seguridad! Se detectó movimiento."
+    mensaje_error_musica: str = "No pude reproducir esa pista: revisa que el archivo exista en la tarjeta SD."
 
 
 # ---------------------------------------------------------------------------

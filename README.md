@@ -21,6 +21,7 @@ interfaz gráfica y un asistente de IA local (todo funciona sin internet).
 | «activa el modo guardián» | arma el PIR; si detecta movimiento suena la alarma y la PC avisa |
 | «apaga la alarma» | silencia la sirena y desarma el guardián |
 | «pon Thriller» · «pon la canción tres» · «pon cualquier canción» | reproduce desde la SD |
+| «pon Bad Bunny» · «pon Mon Laferte» · «pon radio» | reproduce al azar una pista de esa lista/carpeta |
 | «para la música» · «sube el volumen» · «volumen al 50» | controla el reproductor |
 | «qué temperatura hace» · «cómo está la casa» | lee los sensores |
 
@@ -62,18 +63,42 @@ casainteligente/
 
 ## Instalación
 
-### 1. La PC (Python 3.11 o superior)
+### Opción rápida (Windows): un solo doble clic
+
+Con el repositorio descargado (clonado o como ZIP), doble clic en **[ejecutar.bat](ejecutar.bat)**
+(o `.\ejecutar.bat` desde una terminal, parado en la carpeta del proyecto). La primera vez:
+
+- Busca Python (prefiere 3.12; si no está, intenta instalarlo con `winget`).
+- Crea el entorno virtual en `pc/.venv` e instala todas las dependencias.
+- Si no tienes [Ollama](https://ollama.com) instalado, intenta instalarlo con `winget` y
+  descarga el modelo de respaldo (`qwen2.5:1.5b`, ~1 GB).
+- Arranca la interfaz ya conectada a la placa por USB.
+
+Las siguientes veces es casi instantáneo (ya no reinstala nada que no haya cambiado). Si no
+tienes la placa a la mano: `.\ejecutar.bat --demo`. Necesitas internet la primera vez (para
+las descargas); después funciona todo sin conexión.
+
+Esto deja lista la parte de la PC. La placa ([paso 4](#4-la-placa-arduino-ide)) y la tarjeta
+SD ([paso 5](#5-la-tarjeta-sd-del-dfplayer)) se preparan aparte, una sola vez, con el hardware.
+
+### Instalación manual (o en Linux/macOS)
+
+#### 1. La PC (Python 3.12 recomendado)
 
 ```bash
 cd pc
-py -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+> Usa **Python 3.12** si puedes: algunas de estas librerías (faster-whisper/ctranslate2,
+> PySide6) aún no son del todo estables en versiones de Python muy nuevas (p. ej. 3.14),
+> lo que puede cerrar la app sin avisar.
+
 La primera vez que actives el micrófono se descarga el modelo Whisper `base` (~150 MB).
 
-### 2. El modelo de lenguaje (opcional pero recomendado)
+#### 2. El modelo de lenguaje (opcional pero recomendado)
 
 Instala [Ollama](https://ollama.com) y descarga el modelo pequeño:
 
@@ -83,7 +108,7 @@ ollama pull qwen2.5:1.5b
 
 Para usar otro (por ejemplo `llama3.2:1b`): `$env:CASA_OLLAMA_MODELO = "llama3.2:1b"`.
 
-### 3. Una voz en español (Windows)
+#### 3. Una voz en español (Windows)
 
 Configuración → Hora e idioma → Voz → Agregar voces → Español. Comprueba cuál se elige con
 `python tts.py`.
@@ -98,15 +123,43 @@ Configuración → Hora e idioma → Voz → Agregar voces → Español. Comprue
 
 ### 5. La tarjeta SD del DFPlayer
 
-Formato **FAT32**, tarjeta vacía. Copia los archivos **en orden**, uno por uno:
+Usa una tarjeta **dedicada solo a esto** (idealmente de 32 GB o menos: el DFPlayer Mini y
+sus clones son poco fiables con tarjetas más grandes), formateada en **FAT32** y vacía —
+sin carpetas de cámara, descargas, WhatsApp, etc. de un teléfono.
+
+⚠️ **El DFPlayer numera las pistas por el orden físico en que se copiaron los archivos, no
+por su nombre.** Si falta un número de en medio (p. ej. copias `0001` y luego saltas a
+`0012`), **todos los números de ahí en adelante quedan corridos** y suena una canción
+distinta a la que pediste. Por eso:
+
+- Copia los archivos **uno por uno y en orden ascendente, sin saltarte ningún número**.
+- Nombra cada archivo con **4 dígitos exactos** (`0001.mp3`, no `001.mp3` ni `1.mp3`).
+- No dejes ninguna otra carpeta o archivo en la tarjeta.
 
 | Archivo | Contenido |
 |---|---|
 | `0001.mp3` | el sonido de la alarma |
-| `0002.mp3` … `0011.mp3` | tus canciones |
 
 Después edita [pc/canciones.json](pc/canciones.json): `pista` es el número del archivo,
 `titulo` lo que se dice en voz alta y `alias` otras formas de pedirla («la de Queen»).
+
+### Listas (carpetas que se reproducen al azar)
+
+Además de canciones individuales, `canciones.json` admite **listas**: al decir su nombre
+(«pon Bad Bunny», «pon radio») se reproduce al azar una de sus pistas. Vienen 3 ya
+preparadas — Bad Bunny (`0002`–`0006`), Mon Laferte (`0007`–`0011`) y Radio
+(`0012`–`0016`) —, pegadas justo después de la alarma para no dejar huecos. Para usarlas:
+
+1. Copia tus mp3 de Bad Bunny como `0002.mp3` a `0006.mp3`, los de Mon Laferte como
+   `0007.mp3`…`0011.mp3`, y los de radio/variadas como `0012.mp3`…`0016.mp3`, en ese
+   orden, justo después de `0001.mp3` (la alarma). Si usas menos de 5 por lista, no dejes
+   el hueco: corre los números de las listas siguientes para que sigan sin saltos.
+2. Si cambias cuántas pistas tiene cada lista, ajusta `"pistas"` en `canciones.json` para
+   que coincida exactamente con los números que copiaste.
+3. Si pides una lista que no existe («pon Daddy Yankee»), la casa responde
+   «No tengo esa lista. Tengo estas: Bad Bunny, Mon Laferte y Radio. ¿Cuál quieres escuchar?».
+4. Si pides una lista válida pero no pasa nada (o suena otra), siempre es por un hueco o
+   un nombre mal numerado en la SD — revisa el orden y los nombres antes que nada.
 
 ## Cableado (resumen)
 
@@ -122,7 +175,9 @@ Los pines y la polaridad se cambian al principio de `casa_serial.ino`.
 
 ## Uso
 
-Desde la carpeta `pc/`:
+Lo más simple: doble clic en [ejecutar.bat](ejecutar.bat) (ver "Opción rápida" arriba).
+
+Manualmente, con el entorno ya activado, desde la carpeta `pc/`:
 
 ```bash
 python gui_app.py            # interfaz con la placa por USB
@@ -166,7 +221,7 @@ python -m unittest discover -s tests -v
 | `CASA_WHISPER_MODELO` | `base` por defecto; `small` es más preciso y más lento |
 | `CASA_MIC_INDICE` | número del micrófono (`python stt.py --microfonos`) |
 | `CASA_UMBRAL_RMS` | sensibilidad de la detección de voz |
-| `CASA_TTS_REINICIAR` | `1` si la voz solo suena la primera vez |
+| `CASA_TTS_REINICIAR` | `1` por defecto (recrea la voz en cada frase); pon `0` para ahorrar ~0.2 s si en tu PC no hace falta |
 | `CASA_LOG` | `DEBUG` para ver todo |
 
 Lista completa y valores por defecto: `python config.py`.
@@ -180,5 +235,5 @@ Lista completa y valores por defecto: `python config.py`.
 | «El reproductor no está conectado» | revisa el cableado del DFPlayer y la SD (FAT32) |
 | Suena otra canción de la esperada | copia los archivos a la SD en orden, uno por uno |
 | La PC se «oye» a sí misma | baja el volumen del altavoz o usa auriculares |
-| Solo habla la primera vez | `CASA_TTS_REINICIAR=1` |
+| Solo habla la primera vez | ya corregido por defecto; si aun así pasa, confirma que no pusiste `CASA_TTS_REINICIAR=0` |
 | «Ollama no está disponible» | no es grave: funcionan las órdenes directas |

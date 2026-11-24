@@ -151,6 +151,8 @@ class Backend(QObject):
         self.evento_casa.emit(ev)
         if ev.tipo == "intruso":
             self.alertas.put(DIALOGO.mensaje_alerta_intruso)     # el asistente lo dice en voz alta
+        elif ev.tipo == "error_musica":
+            self.alertas.put(DIALOGO.mensaje_error_musica)
         elif ev.tipo == "fin":
             self._pool.submit(self._refrescar)
 

@@ -422,11 +422,17 @@ void loop() {
     cambiarTodosLosLeds(estadoParpadeo);
   }
 
-  // --- Avisos del DFPlayer (fin de pista) ---
+  // --- Avisos del DFPlayer (fin de pista / error) ---
   if (mp3Listo && myDFPlayer.available()) {
-    if (myDFPlayer.readType() == DFPlayerPlayFinished && !alarmaSonando && pistaActual != 0) {
+    uint8_t tipoAviso = myDFPlayer.readType();
+    if (tipoAviso == DFPlayerPlayFinished && !alarmaSonando && pistaActual != 0) {
       Serial.print(F("EVT FIN "));
       Serial.println(pistaActual);
+      pistaActual = 0;
+    } else if (tipoAviso == DFPlayerError) {
+      // P. ej. FileIndexOut (5): se pidió una pista que no existe en la SD.
+      Serial.print(F("EVT ERROR "));
+      Serial.println(myDFPlayer.read());
       pistaActual = 0;
     }
   }

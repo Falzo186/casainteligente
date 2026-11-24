@@ -74,6 +74,7 @@ def fundamentar(llm: Hallazgos, texto: str, catalogo: Catalogo) -> Hallazgos:
     """
     plano = normalizar(texto)
     cancion = catalogo.buscar(plano)
+    lista = catalogo.buscar_lista(plano) if cancion is None else None
     tiene_numero = bool(re.search(r"\d", plano))
     objetivo, accion = llm.objetivo, llm.accion
     # "qué hora es" no es una consulta de la casa: hace falta una palabra de consulta.
@@ -84,6 +85,7 @@ def fundamentar(llm: Hallazgos, texto: str, catalogo: Catalogo) -> Hallazgos:
         zonas=_zonas(plano) if llm.objetivo in (None, "luces", "todo") else (),
         cancion=cancion.pista if cancion else None,
         aleatoria=False,
+        lista=lista.nombre if lista else None,
         valor=llm.valor if tiene_numero else None,
     )
 

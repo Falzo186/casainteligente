@@ -46,6 +46,7 @@ class Comando:
     zonas: tuple[str, ...] = ()
     cancion: int | None = None
     aleatoria: bool = False
+    lista: str | None = None          # nombre de una lista/carpeta: reproduce una pista al azar de ella
     valor: int | None = None
     es_ambiguo: bool = False
     pregunta_aclaracion: str | None = None
@@ -76,19 +77,25 @@ class Hallazgos:
     cancion: int | None = None              # pista del SD
     cancion_fuera_de_rango: int | None = None
     aleatoria: bool = False
+    lista: str | None = None                # nombre de una lista/carpeta (p. ej. "Bad Bunny")
     valor: int | None = None
     varios_objetivos: bool = False          # "prende la sala y el ventilador"
 
     @property
     def reconocido(self) -> bool:
-        """¿Hay algo para construir una orden? (si no, se pasa al LLM)"""
-        return self.accion is not None or self.objetivo is not None
+        """
+        ¿Hay algo más que un verbo suelto para construir una orden? (si no, se
+        pasa al LLM). Un verbo sin objeto ("reproduce <algo que no reconocimos>")
+        no cuenta: así un nombre mal transcrito por Whisper llega al modelo de
+        respaldo en vez de terminar siempre en "no entendí".
+        """
+        return (self.objetivo is not None or self.cancion is not None or self.lista is not None
+                or self.aleatoria or self.valor is not None or self.cancion_fuera_de_rango is not None)
 
     @property
     def util(self) -> bool:
         """¿Aporta algo como respuesta a una aclaración?"""
-        return (self.reconocido or bool(self.zonas) or self.cancion is not None
-                or self.aleatoria or self.valor is not None or self.cancion_fuera_de_rango is not None)
+        return (self.accion is not None or bool(self.zonas) or self.reconocido)
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +185,7 @@ def extraer(texto: str, catalogo: Catalogo, contexto: str | None = None) -> Hall
     verbo = _verbo(plano)
     zonas = _zonas(plano)
     cancion_texto = catalogo.buscar(plano)
+    lista_texto = catalogo.buscar_lista(plano) if cancion_texto is None else None
     palabra_musica = bool(_MUSICA.search(plano))
     hay_volumen = bool(_VOLUMEN.search(plano))
 
@@ -191,8 +199,8 @@ def extraer(texto: str, catalogo: Catalogo, contexto: str | None = None) -> Hall
         candidatos.append("luces")
     if hay_volumen or ((_SUBIR.search(plano) or _BAJAR.search(plano)) and not candidatos and not zonas):
         candidatos.append("volumen")
-    elif palabra_musica or (cancion_texto is not None and not candidatos and not zonas):
-        # Un título solo cuenta si no hay otro objeto: "prende dos luces" no pide la canción "Dos".
+    elif palabra_musica or ((cancion_texto is not None or lista_texto is not None) and not candidatos and not zonas):
+        # Un título o lista solo cuenta si no hay otro objeto: "prende dos luces" no pide la canción "Dos".
         candidatos.append("musica")
     consulta = _CONSULTA.search(plano)
     if consulta and (_PREGUNTA.search(plano) or plano.startswith(("temperatura", "humedad"))) and not candidatos:
@@ -216,6 +224,7 @@ def extraer(texto: str, catalogo: Catalogo, contexto: str | None = None) -> Hall
 
     # --- Música y volumen ---
     cancion = cancion_texto.pista if cancion_texto else None
+    lista = lista_texto.nombre if (lista_texto is not None and objetivo == "musica") else None
     fuera_de_rango = None
     aleatoria = False
     valor = None
@@ -231,7 +240,7 @@ def extraer(texto: str, catalogo: Catalogo, contexto: str | None = None) -> Hall
                     cancion = elegida.pista
                 elif numero is not None:
                     fuera_de_rango = numero
-        aleatoria = bool(_ALEATORIA.search(plano)) and cancion is None and fuera_de_rango is None
+        aleatoria = bool(_ALEATORIA.search(plano)) and cancion is None and fuera_de_rango is None and lista is None
 
     if contexto == "volumen" and objetivo is None:
         # Respuesta a "¿a qué volumen?": basta con decir "50" o "al máximo".
@@ -256,7 +265,7 @@ def extraer(texto: str, catalogo: Catalogo, contexto: str | None = None) -> Hall
         accion = "consultar"
 
     return Hallazgos(accion=accion, objetivo=objetivo, zonas=zonas if objetivo in (None, "luces", "todo") else (),
-                     cancion=cancion, cancion_fuera_de_rango=fuera_de_rango, aleatoria=aleatoria,
+                     cancion=cancion, cancion_fuera_de_rango=fuera_de_rango, aleatoria=aleatoria, lista=lista,
                      valor=valor, varios_objetivos=varios)
 
 
@@ -336,8 +345,13 @@ def completar(h: Hallazgos, catalogo: Catalogo) -> Comando:
                               if len(catalogo) else "No tengo canciones cargadas.")
         if h.cancion is not None or h.aleatoria:
             return Comando("reproducir", "musica", cancion=h.cancion, aleatoria=h.aleatoria)
-        if len(catalogo) == 0:
+        if h.lista is not None:
+            return Comando("reproducir", "musica", lista=h.lista)
+        if len(catalogo) == 0 and not catalogo.listas:
             return Comando.desconocido("No tengo canciones cargadas.")
+        if catalogo.listas:
+            return _preguntar(Comando("reproducir", "musica"),
+                              f"No tengo esa lista. Tengo estas: {catalogo.listas_para_voz()}. ¿Cuál quieres escuchar?")
         return _preguntar(Comando("reproducir", "musica"),
                           f"¿Qué canción quieres escuchar? Tengo {catalogo.titulos_para_voz()}.")
 
@@ -376,9 +390,10 @@ def fusionar(pendiente: Comando, h: Hallazgos, catalogo: Catalogo) -> Comando:
 
     zonas = h.zonas or (() if cambio_de_objetivo else pendiente.zonas)
     cancion = h.cancion if h.cancion is not None else (None if cambio_de_objetivo else pendiente.cancion)
+    lista = h.lista if h.lista is not None else (None if cambio_de_objetivo else pendiente.lista)
     fusionado = Hallazgos(
         accion=accion, objetivo=objetivo, zonas=zonas, cancion=cancion,
-        cancion_fuera_de_rango=h.cancion_fuera_de_rango,
+        cancion_fuera_de_rango=h.cancion_fuera_de_rango, lista=lista,
         aleatoria=h.aleatoria or (pendiente.aleatoria and not cambio_de_objetivo),
         valor=h.valor if h.valor is not None else (None if cambio_de_objetivo else pendiente.valor),
     )
@@ -410,6 +425,8 @@ def describir(c: Comando, catalogo: Catalogo) -> str:
     if c.objetivo == "musica":
         if c.accion == "detener":
             return "detenga la música"
+        if c.lista:
+            return f"reproduzca algo de {c.lista}"
         cancion = catalogo.por_pista(c.cancion) if c.cancion is not None else None
         return f"reproduzca {cancion.titulo}" if cancion else "reproduzca una canción al azar"
     if c.objetivo == "volumen":

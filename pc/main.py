@@ -103,7 +103,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Alertas: eventos de la placa y pérdida de conexión ---
     alertas: queue.Queue[str] = queue.Queue()
-    cliente.suscribir(lambda ev: alertas.put(DIALOGO.mensaje_alerta_intruso) if ev.tipo == "intruso" else None)
+    def _al_evento_casa(ev: EventoCasa) -> None:
+        if ev.tipo == "intruso":
+            alertas.put(DIALOGO.mensaje_alerta_intruso)
+        elif ev.tipo == "error_musica":
+            alertas.put(DIALOGO.mensaje_error_musica)
+
+    cliente.suscribir(_al_evento_casa)
     armado = {"si": False}
 
     def al_estado(e: EstadoCasa) -> None:

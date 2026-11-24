@@ -93,7 +93,9 @@ class TestCatalogo(unittest.TestCase):
             self.assertEqual(len(Catalogo.cargar(Path(d) / "no_existe.json")), 0)
 
     def test_archivo_de_ejemplo_es_valido(self):
-        self.assertEqual(len(Catalogo.cargar()), 10)
+        c = Catalogo.cargar()
+        self.assertEqual(len(c), 0)
+        self.assertEqual([l.nombre for l in c.listas], ["Bad Bunny", "Mon Laferte", "Radio"])
 
 
 class TestLuces(unittest.TestCase):

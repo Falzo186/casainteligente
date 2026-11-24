@@ -6,7 +6,7 @@ Protocolo de líneas (ver la cabecera de casa_serial.ino):
     PC -> placa:   PING | STATUS | LED n v | LEDS v | FAN v | GUARD v | ALARMOFF |
                    PLAY n | STOP | VOL v
     placa -> PC:   PONG | OK ... | ERR motivo | {json de STATUS}   (respuestas)
-                   EVT INTRUSO | EVT FIN n                          (espontáneos)
+                   EVT INTRUSO | EVT FIN n | EVT ERROR codigo       (espontáneos)
 
 Un hilo lector separa las respuestas de los eventos, así un aviso de intruso
 llega al instante aunque no se haya preguntado nada. Todas las órdenes fijan un
@@ -68,8 +68,8 @@ class ErrorRespuestaCasa(ErrorCasa):
 
 @dataclass(frozen=True)
 class EventoCasa:
-    tipo: str                    # "intruso", "fin", "desconexion"
-    dato: int | None = None      # número de pista en "fin"
+    tipo: str                    # "intruso", "fin", "error_musica", "desconexion"
+    dato: int | None = None      # número de pista en "fin"; código DFPlayer en "error_musica"
     t: float = field(default_factory=time.time)
 
 
@@ -301,6 +301,12 @@ class ClienteSerie:
                 except (IndexError, ValueError):
                     pista = None
                 self._emitir(EventoCasa("fin", pista))
+            elif partes[1] == "ERROR":
+                try:
+                    codigo = int(partes[2])
+                except (IndexError, ValueError):
+                    codigo = None
+                self._emitir(EventoCasa("error_musica", codigo))
             else:
                 log.debug("Evento desconocido: %s", linea)
         elif linea in ("PONG", "OK") or linea.startswith(("OK ", "ERR", "{")):

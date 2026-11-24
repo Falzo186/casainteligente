@@ -1,15 +1,10 @@
 {
   "_nota": "Edita esta lista con TUS canciones. 'pista' es el número del archivo en la tarjeta SD (0002.mp3 = 2; la 0001.mp3 es la alarma). 'titulo' es lo que se dice en voz alta y 'alias' son otras formas de pedirla ('pon la de ...'). Se pueden tener hasta 28.",
-  "canciones": [
-    {"pista": 2, "titulo": "Canción uno", "alias": []},
-    {"pista": 3, "titulo": "Canción dos", "alias": []},
-    {"pista": 4, "titulo": "Canción tres", "alias": []},
-    {"pista": 5, "titulo": "Canción cuatro", "alias": []},
-    {"pista": 6, "titulo": "Canción cinco", "alias": []},
-    {"pista": 7, "titulo": "Canción seis", "alias": []},
-    {"pista": 8, "titulo": "Canción siete", "alias": []},
-    {"pista": 9, "titulo": "Canción ocho", "alias": []},
-    {"pista": 10, "titulo": "Canción nueve", "alias": []},
-    {"pista": 11, "titulo": "Canción diez", "alias": []}
+  "_nota_listas": "'listas' son carpetas: al decir su nombre ('pon Bad Bunny') se reproduce al azar una de sus 'pistas'. Cada pista debe tener también su archivo en la SD, y no debe repetirse ni con 'canciones' ni con otra lista. IMPORTANTE: copia los archivos a la SD en orden y SIN HUECOS de numeración (0001, 0002, 0003...) - al DFPlayer le confunde la numeración si faltan archivos de en medio.",
+  "canciones": [],
+  "listas": [
+    {"nombre": "Bad Bunny", "alias": ["bad bunny", "benito"], "pistas": [2, 3, 4, 5, 6]},
+    {"nombre": "Mon Laferte", "alias": ["mon laferte", "laferte"], "pistas": [7, 8, 9, 10, 11]},
+    {"nombre": "Radio", "alias": ["radio", "variadas", "lo que sea"], "pistas": [12, 13, 14, 15, 16]}
   ]
 }

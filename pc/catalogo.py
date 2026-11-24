@@ -63,16 +63,35 @@ class Cancion:
         return sorted(todos, key=len, reverse=True)
 
 
+@dataclass(frozen=True)
+class Lista:
+    """
+    Una carpeta/lista con varias pistas (p. ej. "Bad Bunny"): al pedirla se
+    reproduce una canción al azar de entre sus pistas.
+    """
+
+    nombre: str
+    alias: tuple[str, ...] = ()
+    pistas: tuple[int, ...] = ()
+
+    @property
+    def nombres(self) -> list[str]:
+        """Nombre y alias normalizados, de más largo a más corto."""
+        todos = {normalizar(n) for n in (self.nombre, *self.alias) if normalizar(n)}
+        return sorted(todos, key=len, reverse=True)
+
+
 def _palabras_clave(nombre: str) -> list[str]:
     return [p for p in nombre.split() if p not in _RELLENO]
 
 
 class Catalogo:
 
-    def __init__(self, canciones: list[Cancion]) -> None:
-        pistas = [c.pista for c in canciones]
+    def __init__(self, canciones: list[Cancion], listas: list[Lista] | None = None) -> None:
+        listas = listas or []
+        pistas = [c.pista for c in canciones] + [p for l in listas for p in l.pistas]
         if len(set(pistas)) != len(pistas):
-            raise ErrorCatalogo("Hay dos canciones con el mismo número de pista.")
+            raise ErrorCatalogo("Hay dos canciones (o listas) con el mismo número de pista.")
         for c in canciones:
             if not PISTA_MIN_CANCION <= c.pista <= PISTA_MAX:
                 raise ErrorCatalogo(
@@ -81,7 +100,19 @@ class Catalogo:
                 )
             if not c.titulo.strip():
                 raise ErrorCatalogo(f"La pista {c.pista} no tiene título.")
+        for l in listas:
+            if not l.nombre.strip():
+                raise ErrorCatalogo(f"Una lista sin nombre (pistas {l.pistas}).")
+            if not l.pistas:
+                raise ErrorCatalogo(f"La lista '{l.nombre}' no tiene pistas.")
+            for p in l.pistas:
+                if not PISTA_MIN_CANCION <= p <= PISTA_MAX:
+                    raise ErrorCatalogo(
+                        f"Pista {p} de la lista '{l.nombre}' fuera de rango: usa {PISTA_MIN_CANCION} a {PISTA_MAX} "
+                        f"(la {PISTA_ALARMA} es la alarma)."
+                    )
         self.canciones = list(canciones)
+        self.listas = list(listas)
 
     def __len__(self) -> int:
         return len(self.canciones)
@@ -99,9 +130,14 @@ class Catalogo:
                 Cancion(int(c["pista"]), str(c["titulo"]).strip(), tuple(str(a) for a in c.get("alias", [])))
                 for c in datos["canciones"]
             ]
+            listas = [
+                Lista(str(l["nombre"]).strip(), tuple(str(a) for a in l.get("alias", [])),
+                      tuple(int(p) for p in l["pistas"]))
+                for l in datos.get("listas", [])
+            ]
         except (OSError, ValueError, KeyError, TypeError) as e:
             raise ErrorCatalogo(f"No se pudo leer {ruta.name}: {e!r}") from e
-        return cls(canciones)
+        return cls(canciones, listas)
 
     # --- Búsqueda -----------------------------------------------------------
 
@@ -133,6 +169,25 @@ class Catalogo:
             return None
         ganadoras = [p for p, s in mejores.items() if s == maximo]
         return self.por_pista(ganadoras[0]) if len(ganadoras) == 1 else None
+
+    def buscar_lista(self, texto: str) -> Lista | None:
+        """La lista (p. ej. "Bad Bunny") mencionada en `texto`, o None si no hay ninguna o hay empate."""
+        plano = normalizar(texto)
+        palabras_texto = plano.split()
+        if not palabras_texto or not self.listas:
+            return None
+
+        mejores: dict[str, float] = {}
+        for lista in self.listas:
+            mejores[lista.nombre] = max((self._puntuar(n, plano, palabras_texto) for n in lista.nombres), default=0.0)
+
+        maximo = max(mejores.values())
+        if maximo < 0.66:
+            return None
+        ganadoras = [nombre for nombre, s in mejores.items() if s == maximo]
+        if len(ganadoras) != 1:
+            return None
+        return next(l for l in self.listas if l.nombre == ganadoras[0])
 
     @staticmethod
     def _puntuar(nombre: str, plano: str, palabras_texto: list[str]) -> float:
@@ -168,3 +223,13 @@ class Catalogo:
         if len(titulos) <= 1:
             return "".join(titulos)
         return ", ".join(titulos[:-1]) + " y " + titulos[-1]
+
+    def listas_para_voz(self) -> str:
+        """'Bad Bunny, Mon Laferte y Radio' para decirlo en voz alta."""
+        nombres = [l.nombre for l in self.listas]
+        if len(nombres) <= 1:
+            return "".join(nombres)
+        return ", ".join(nombres[:-1]) + " y " + nombres[-1]
+
+    def por_nombre_lista(self, nombre: str) -> Lista | None:
+        return next((l for l in self.listas if l.nombre == nombre), None)

@@ -1,0 +1,24 @@
+# Entornos virtuales de Python (los crea ejecutar.bat / la instalación manual)
+.venv/
+.venv*/
+venv/
+
+# Cachés de Python
+__pycache__/
+*.pyc
+
+# Build de Arduino / PlatformIO
+firmware/**/build/
+*.hex
+
+# Registros y estado local
+*.log
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editores
+.vscode/
+.idea/

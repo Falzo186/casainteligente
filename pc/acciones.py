@@ -56,6 +56,7 @@ class Ejecutor:
         self._catalogo = catalogo
         self._azar = azar or random.Random()
         self._ultima_aleatoria: int | None = None
+        self._ultima_por_lista: dict[str, int] = {}
 
     def ejecutar(self, c: Comando) -> Resultado:
         if not c.ejecutable:
@@ -129,6 +130,16 @@ class Ejecutor:
             self._casa.detener()
             return "Música detenida."
         pista = c.cancion
+        if pista is None and c.lista:
+            lista = self._catalogo.por_nombre_lista(c.lista)
+            if lista is None:
+                return "No tengo esa lista."
+            evitar = self._ultima_por_lista.get(c.lista)
+            opciones = [p for p in lista.pistas if p != evitar] or list(lista.pistas)
+            pista = self._azar.choice(opciones)
+            self._ultima_por_lista[c.lista] = pista
+            self._casa.reproducir(pista)
+            return f"Reproduciendo algo de {lista.nombre}."
         if pista is None:
             if len(self._catalogo) == 0:
                 return "No tengo canciones cargadas."
