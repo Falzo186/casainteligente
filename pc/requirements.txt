@@ -1,0 +1,13 @@
+# Casa Inteligente en Caja — dependencias de la PC
+# Instalar con:  pip install -r requirements.txt
+# Probado con Python 3.14 en Windows. Recomendado usar un entorno virtual:
+#   py -m venv .venv  ->  .venv\Scripts\activate  ->  pip install -r requirements.txt
+
+faster-whisper>=1.0.0   # STT offline (Whisper optimizado con CTranslate2)
+pyttsx3>=2.90           # TTS offline (SAPI5 en Windows, eSpeak en Linux)
+ollama>=0.3.0           # Cliente de Ollama (soporta format="json")
+requests>=2.31          # HTTP hacia el ESP32 (firmware Wi-Fi opcional)
+pyserial>=3.5           # USB / puerto serie hacia la placa (casa_serial)
+sounddevice>=0.4.6      # Captura del micrófono (PortAudio)
+numpy>=1.24             # Procesado del audio
+PySide6>=6.6            # Interfaz gráfica (gui_app.py)

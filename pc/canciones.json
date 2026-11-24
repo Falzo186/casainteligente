@@ -1,0 +1,15 @@
+{
+  "_nota": "Edita esta lista con TUS canciones. 'pista' es el número del archivo en la tarjeta SD (0002.mp3 = 2; la 0001.mp3 es la alarma). 'titulo' es lo que se dice en voz alta y 'alias' son otras formas de pedirla ('pon la de ...'). Se pueden tener hasta 28.",
+  "canciones": [
+    {"pista": 2, "titulo": "Canción uno", "alias": []},
+    {"pista": 3, "titulo": "Canción dos", "alias": []},
+    {"pista": 4, "titulo": "Canción tres", "alias": []},
+    {"pista": 5, "titulo": "Canción cuatro", "alias": []},
+    {"pista": 6, "titulo": "Canción cinco", "alias": []},
+    {"pista": 7, "titulo": "Canción seis", "alias": []},
+    {"pista": 8, "titulo": "Canción siete", "alias": []},
+    {"pista": 9, "titulo": "Canción ocho", "alias": []},
+    {"pista": 10, "titulo": "Canción nueve", "alias": []},
+    {"pista": 11, "titulo": "Canción diez", "alias": []}
+  ]
+}
